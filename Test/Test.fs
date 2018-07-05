@@ -11,7 +11,6 @@ namespace IndentFParsec
 module Test =
   open FParsec
   open IndentFParsec.IndentParser
-  open IndentFParsec.SampleIndentations
 
   type Identifier = string
 
@@ -20,19 +19,34 @@ module Test =
 
   //let whitespace<'i, 'u> : IndentParser<unit, 'i, 'u> = tokeniser spaces
   //let spaces<'i, 'u> : IndentParser<unit, 'i, 'u> = tokeniser (skipMany (pchar ' '))
-  let spaces<'i, 'u> : IndentParser<unit, 'i, 'u> = tokeniser spaces
+  let spaces<'i, 'u> : IndentParser<unit, 'u> = tokeniser spaces
 
-  let identifier = spaces >>. tokeniser asciiLower |>> string 
-  let keyword str = spaces >>. tokeniser (pstring str) >>? tokeniser (nextCharSatisfiesNot (fun c -> isLetter c || isDigit c) <?> str)
+  let rec many1' p = parse {
+    let! x = p
+    let! xs = attempt (many1' p) <|> preturn []
+    return x::xs
+  }
+  let many' p = many1' p <|> preturn []
+  let stringOf p = many' p |>> (List.map string >> List.fold (+) "")
+  let identifier = parse {
+    do! spaces
+    let! f = tokeniser asciiLetter
+    let! t = stringOf (asciiLetter <|> digit)
+    return string f + t
+  }
 
-  let integer<'i, 'u> : IndentParser<int32, 'i, 'u> = spaces >>. tokeniser pint32
+  let keyword str = tokeniser (pstring str) >>? tokeniser (nextCharSatisfiesNot (fun c -> isLetter c || isDigit c) <?> str)
+
+  let integer<'i, 'u> : IndentParser<int32, 'u> = spaces >>. tokeniser pint32
 
   let rec loop = tokeniser <| parse {
+      do! spaces
+      let! expStart = getPosition
       do! keyword "loop"
       let! id = identifier
       let! min = integer
       let! max = integer
-      let! stmts = statementBlock
+      let! stmts = nestWithPos BlockAfter expStart (many' (statement .>> spaces))
       return Loop(id, min, max, stmts)
     }
   and print = tokeniser <| parse {
@@ -41,17 +55,12 @@ module Test =
       return Print id
     }
   and statement = spaces >>. (print <|> loop)
-  and statementBlock =
-      let rec manyStatements = parse {
-        let! stm = nest LineFold statement
-        let! stmts = attempt manyStatements <|> preturn []
-        return (stm :: stmts)
-      }
-      nest Block manyStatements
+  
+  let statements = many' (statement .>> spaces)
 
-  let document = statementBlock .>> spaces .>> eof
+  let document = statements .>> spaces .>> eof
   let testParse str =
-      match runParserOnString document (Indent(haskellLikeIndentation, Neglect, ())) "" str with
+      match runParserOnString document {LineStart = Any; UserState = ()} "" str with
       | Success(result, _, _)   ->
           printfn "Success: %A" result
           Some result
