@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FParsec" Version="1.0.3" />
+    <ProjectReference Include="..\IdentFParsec.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Test.fs" />
+    <Compile Include="Run.fs" />
+  </ItemGroup>
+
+</Project>
