@@ -63,7 +63,7 @@ module IndentParser =
     let! pos = getPosition
     let! i = getIndentation
     if acceptable i pos then return! p
-    else return! failf "unexpected token at %A (indent)" pos
+    else return! failf "incorrect indentation at %A" pos
   }
 
   let nestP i o p = parse {
@@ -101,30 +101,21 @@ module IndentParser =
 
   //let spaces<'i, 'u> : IndentParser<unit, 'u> = tokeniser spaces
   let checkIndent<'u> : IndentParser<unit, 'u> = tokeniser (preturn ())
-  let indent<'u> : IndentParser<unit, 'u> = spaces >>. parse {
-    let! pos = getPosition
-    do! putIndentation (StartIndent pos)
+  let indented<'a,'u> i (p : Parser<'a,_>) : IndentParser<_, 'u> = parse {
+    do! putIndentation i
+    do! spaces
+    return! tokeniser p
   }
-  let setIndentType t : IndentParser<unit, 'u> = parse {
-    let! indent = getIndentation
-    match indent.Position with
-    | None ->
-      let! p = getPosition
-      do! putIndentation (t p)
-    | Some p -> do! putIndentation (t p)
-  }
-  let exact<'u> : IndentParser<unit, 'u> = spaces >>. setIndentType Exact
-  let greater<'u> : IndentParser<unit, 'u> = spaces >>. setIndentType Greater
-  let atLeast<'u> : IndentParser<unit, 'u> = spaces >>. setIndentType AtLeast
-  let any<'u> : IndentParser<unit, 'u> = spaces >>. setIndentType Any
+  let exact<'a,'u> pos p: IndentParser<'a, 'u> = indented (Exact pos) p
+  let greater<'a,'u> pos p: IndentParser<'a, 'u> = indented (Greater pos) p
+  let atLeast<'a,'u> pos p: IndentParser<'a, 'u> = indented (AtLeast pos) p
+  let any<'a,'u> pos p: IndentParser<'a, 'u> = indented (Any pos) p
 
 
   let rec blockOf p = parse {
-    do! indent
-    let! x = (attempt (exact >>. p) |>> Some) <|> preturn None
-    match x with
-    | None -> return []
-    | Some x ->
-        let! xs = (exact >>. blockOf p) <|> preturn []
-        return x::xs
+    do! spaces
+    let! pos = getPosition    
+    let! x = exact pos p
+    let! xs = attempt (exact pos <| blockOf p) <|> preturn []
+    return x::xs
   }

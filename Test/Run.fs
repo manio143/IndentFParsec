@@ -9,7 +9,7 @@ module Entry =
   loop i 1 10
     loop k 1 10
      print k1
-      print k2
+     print k2
      print k3
     print i
   print j
