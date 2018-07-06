@@ -30,6 +30,8 @@ I've described it's grammar in terms of IS (after reading [this paper by Michael
     Print  -> "print"(=)  Ident(>)
     Loop   ->  "loop"(=)  Ident(>) Int(>) Int(>) Stmts(>)
 
+Given the left side of a production starts at column `i` then the part in the right of the production must start at such column `j` that `j ~ i`, where `~` is the relation in parenthesis. The possible relations are `=`, `>`, `>=` and `*` (asterisk means any indentation). Each of those relations is described in the form of a function, listed above.
+
 In `Test/Test.fs` you can find the parser for this language and in `Test/Run.fs` the examples I've tested it on.
 
 #### License and stuff
