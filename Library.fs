@@ -4,16 +4,15 @@ open FParsec
 
 module IndentParser =
   type Indentation = 
-      | Fail | Zero
-      | Any of Position
+      | Fail
+      | Any
       | Greater of Position 
       | Exact of Position 
       | AtLeast of Position 
       | StartIndent of Position
       with
         member this.Position = match this with
-                               | Zero | Fail -> None
-                               | Any p -> Some p
+                               | Any | Fail -> None
                                | Greater p -> Some p
                                | Exact p -> Some p
                                | AtLeast p -> Some p
@@ -23,7 +22,7 @@ module IndentParser =
   type CharStream<'T> = FParsec.CharStream<IndentState<'T>>
   type IndentParser<'T, 'UserState> = Parser<'T, IndentState<'UserState>>
 
-  let indentState u = {Indent = Zero; UserState = u}
+  let indentState u = {Indent = Any; UserState = u}
   let runParser p u s = runParserOnString p (indentState u) "" s
   let runParserOnFile p u path = runParserOnFile p (indentState u) path System.Text.Encoding.UTF8
 
@@ -43,7 +42,6 @@ module IndentParser =
 
   let acceptable i (pos : Position) =
     match i with
-    | Zero -> true
     | Any _ -> true
     | Fail -> false
     | Greater bp -> bp.Column < pos.Column
@@ -93,7 +91,7 @@ module IndentParser =
 
   let neglectIndent p = parse {
     let! o = getIndentation
-    do! putIndentation Zero
+    do! putIndentation Any
     let! x = p
     do! putIndentation o
     return x
@@ -110,7 +108,7 @@ module IndentParser =
   let exact<'a,'u> pos p: IndentParser<'a, 'u> = indented (Exact pos) p
   let greater<'a,'u> pos p: IndentParser<'a, 'u> = indented (Greater pos) p
   let atLeast<'a,'u> pos p: IndentParser<'a, 'u> = indented (AtLeast pos) p
-  let any<'a,'u> pos p: IndentParser<'a, 'u> = indented (Any pos) p
+  let any<'a,'u> pos p: IndentParser<'a, 'u> = indented Any p
 
   let rec blockOf p = parse {
     do! spaces

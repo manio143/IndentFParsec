@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <PackageReference Include="FParsec" Version="1.0.3" />
-    <ProjectReference Include="..\IdentFParsec.fsproj" />
+    <ProjectReference Include="..\IndentFParsec.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
