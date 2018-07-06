@@ -46,7 +46,8 @@ module Test =
       let! id = identifier
       let! min = integer
       let! max = integer
-      let! stmts = nestWithPos BlockAfter expStart (many' (statement .>> spaces))
+      do! spaces
+      let! stmts = nestWithPos Block expStart (nest Exact <| many' (statement .>> spaces))
       return Loop(id, min, max, stmts)
     }
   and print = tokeniser <| parse {

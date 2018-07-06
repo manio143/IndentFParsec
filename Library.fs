@@ -3,7 +3,7 @@ namespace IndentFParsec
 open FParsec
 
 module IndentParser =
-  type Indentation = Any | Fail | BlockAfter of Position | FoldLineStartingAt of Position
+  type Indentation = Any | Fail | Block of Position | Exact of Position
   type IndentState<'T> = { LineStart : Indentation; UserState : 'T }
   type CharStream<'T> = FParsec.CharStream<IndentState<'T>>
   type IndentParser<'T, 'UserState> = Parser<'T, IndentState<'UserState>>
@@ -26,15 +26,15 @@ module IndentParser =
     match i with
     | Any -> true
     | Fail -> false
-    | BlockAfter bp -> bp.Column < pos.Column
-    | FoldLineStartingAt lp -> lp.Column < pos.Column || lp = pos
+    | Block bp -> bp.Column < pos.Column
+    | Exact ep -> ep.Column = pos.Column
 
   let nestableIn i o =
     match i, o with
-    | BlockAfter i, BlockAfter o -> o.Column < i.Column
-    | BlockAfter i, FoldLineStartingAt o -> o.Column < i.Column
-    | FoldLineStartingAt i, FoldLineStartingAt o -> o.Column < i.Column
-    | FoldLineStartingAt i, BlockAfter o -> o.Column <= i.Column
+    | Block i, Block o -> o.Column < i.Column
+    | Block i, Exact o -> o.Column < i.Column
+    | Exact i, Exact o -> o.Column = i.Column
+    | Exact i, Block o -> o.Column <= i.Column
     | _, _ -> true
 
   let tokeniser p = parse {
