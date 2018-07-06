@@ -99,18 +99,18 @@ module IndentParser =
     return x
   }
 
-  //let spaces<'i, 'u> : IndentParser<unit, 'u> = tokeniser spaces
   let checkIndent<'u> : IndentParser<unit, 'u> = tokeniser (preturn ())
+
   let indented<'a,'u> i (p : Parser<'a,_>) : IndentParser<_, 'u> = parse {
     do! putIndentation i
     do! spaces
     return! tokeniser p
   }
+
   let exact<'a,'u> pos p: IndentParser<'a, 'u> = indented (Exact pos) p
   let greater<'a,'u> pos p: IndentParser<'a, 'u> = indented (Greater pos) p
   let atLeast<'a,'u> pos p: IndentParser<'a, 'u> = indented (AtLeast pos) p
   let any<'a,'u> pos p: IndentParser<'a, 'u> = indented (Any pos) p
-
 
   let rec blockOf p = parse {
     do! spaces
