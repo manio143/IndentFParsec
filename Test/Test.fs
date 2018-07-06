@@ -19,15 +19,15 @@ module Test =
 
   //let whitespace<'i, 'u> : IndentParser<unit, 'i, 'u> = tokeniser spaces
   //let spaces<'i, 'u> : IndentParser<unit, 'i, 'u> = tokeniser (skipMany (pchar ' '))
-  let spaces<'i, 'u> : IndentParser<unit, 'u> = tokeniser spaces
-
   let rec many1' p = parse {
     let! x = p
     let! xs = attempt (many1' p) <|> preturn []
     return x::xs
   }
   let many' p = many1' p <|> preturn []
+
   let stringOf p = many' p |>> (List.map string >> List.fold (+) "")
+
   let identifier = parse {
     do! spaces
     let! f = tokeniser asciiLetter
@@ -35,33 +35,34 @@ module Test =
     return string f + t
   }
 
-  let keyword str = tokeniser (pstring str) >>? tokeniser (nextCharSatisfiesNot (fun c -> isLetter c || isDigit c) <?> str)
+  let keyword str = tokeniser (pstring str >>? (nextCharSatisfiesNot (fun c -> isLetter c || isDigit c) <?> str))
 
-  let integer<'i, 'u> : IndentParser<int32, 'u> = spaces >>. tokeniser pint32
+  let integer<'i, 'u> : IndentParser<int32, 'u> = tokeniser pint32
 
-  let rec loop = tokeniser <| parse {
-      do! spaces
-      let! expStart = getPosition
+  let rec loop = parse {
       do! keyword "loop"
-      let! id = identifier
-      let! min = integer
-      let! max = integer
-      do! spaces
-      let! stmts = nestWithPos Block expStart (nest Exact <| many' (statement .>> spaces))
+      let! id = greater >>. identifier
+      let! min = greater >>. integer
+      let! max = greater >>. integer
+      let! stmts = exact >>. loopBlock
       return Loop(id, min, max, stmts)
     }
-  and print = tokeniser <| parse {
+  and loopBlock = parse {
+      do! indent
+      return! greater >>. statements
+    }
+  and print = parse {
       do! keyword "print"
-      let! id = identifier
+      let! id = greater >>. identifier
       return Print id
     }
-  and statement = spaces >>. (print <|> loop)
-  
-  let statements = many' (statement .>> spaces)
+  and statement = exact >>. (print <|> loop)
+  and statements = blockOf statement
 
-  let document = statements .>> spaces .>> eof
+  let document = statements .>> atLeast .>> eof
+
   let testParse str =
-      match runParserOnString document {LineStart = Any; UserState = ()} "" str with
+      match runParser document () str with
       | Success(result, _, _)   ->
           printfn "Success: %A" result
           Some result
