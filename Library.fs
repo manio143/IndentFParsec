@@ -110,6 +110,8 @@ module IndentParser =
   let atLeast<'a,'u> pos p: IndentParser<'a, 'u> = indented (AtLeast pos) p
   let any<'a,'u> pos p: IndentParser<'a, 'u> = indented Any p
 
+  let newline<'u> : IndentParser<unit, 'u> = many (skipAnyOf " \t" <?> "whitespace") >>. newline |>> ignore
+
   let rec blockOf p = parse {
     do! spaces
     let! pos = getPosition    

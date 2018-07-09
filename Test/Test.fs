@@ -10,15 +10,10 @@ module Test =
 
   type Statement = Loop of Identifier * int * int * Statement list
                  | Print of Identifier
+                 | Case of Identifier * Pattern list
+  and  Pattern = Pattern of int * Statement list
 
-  let rec many1' p = parse {
-    let! x = p
-    let! xs = attempt (many1' p) <|> preturn []
-    return x::xs
-  }
-  let many' p = many1' p <|> preturn []
-
-  let stringOf p = many' p |>> (List.map string >> List.fold (+) "")
+  let stringOf p = many p |>> (List.map string >> List.fold (+) "")
   
   let identifier = parse {
     do! spaces
@@ -28,8 +23,9 @@ module Test =
   }
 
   let keyword str = tokeniser (pstring str >>? (nextCharSatisfiesNot (fun c -> isLetter c || isDigit c) <?> str))
+  let op str = tokeniser (pstring str >>? (nextCharSatisfiesNot (isAnyOf "!@#$%^&*()-+=?/><|") <?> str))
 
-  let integer<'i, 'u> : IndentParser<int32, 'u> = tokeniser pint32
+  let integer<'u> : IndentParser<int32, 'u> = tokeniser pint32
 
   let rec loop = parse {
       let! pos = getPosition
@@ -37,7 +33,7 @@ module Test =
       let! id = greater pos identifier
       let! min = greater pos integer
       let! max = greater pos integer
-      let! stmts = greater pos statements
+      let! stmts = newline >>. greater pos statements
       return Loop(id, min, max, stmts)
     }
   and print = parse {
@@ -46,7 +42,23 @@ module Test =
       let! id = greater pos identifier
       return Print id
     }
-  and statement = (attempt print <|> loop)
+  and case = parse {
+      let! pos = getPosition
+      do! exact pos (keyword "case")
+      let! id = greater pos identifier
+      do! greater pos (keyword "of")
+      let! pats = newline >>. atLeast pos (blockOf pattern)
+      return Case(id, pats)
+    }
+  and pattern = parse {
+      let! pos = getPosition
+      do! exact pos (op "|")
+      let! value = greater pos integer
+      do! greater pos (op "->")
+      let! stmts = greater pos statements
+      return Pattern(value, stmts)
+    }
+  and statement = (attempt print <|> attempt case <|> loop)
   and statements = blockOf statement
 
   let document = spaces >>. statements .>> spaces .>> eof

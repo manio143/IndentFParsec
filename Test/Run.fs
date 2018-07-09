@@ -15,7 +15,18 @@ module Entry =
   print j
   "
     do ignore <| testParse @"
-    loop i 1 10  print i1
-                 print i2
+    loop i 1 10  
+      print i1
+      print i2
+    "
+    do ignore <| testParse @"
+    loop i 1 2
+      case i of
+      | 1 -> loop k 1 5
+              print k
+      | 2 ->
+        loop j 1 10
+          print i
+          print j
     "
     0
